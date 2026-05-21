@@ -16,18 +16,32 @@ def main():
         print("Error: Please set your GEMINI_API_KEY or GOOGLE_API_KEY in the .env file.", file=sys.stderr)
         sys.exit(1)
         
-    print("Initializing GoogleGenerativeAIEmbeddings...")
+    # We use gemini-embedding-001 as text-embedding-004 is retired/deprecated in AI Studio.
+    # gemini-embedding-001 supports Matryoshka Representation Learning (MRL), allowing us to
+    # request a 768-dimensional output vector using the output_dimensionality parameter.
+    model_name = "gemini-embedding-001"
+    
+    print(f"Initializing GoogleGenerativeAIEmbeddings with model: {model_name}...")
     try:
         embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
+            model=model_name,
             task_type="retrieval_document",
-            google_api_key=api_key
+            google_api_key=api_key,
+            output_dimensionality=768
         )
         
         sample_text = "Testing langchain google gemini embeddings retrieval dimension"
         print(f"Embedding sample string: '{sample_text}'")
         
-        vector = embeddings.embed_query(sample_text)
+        # Test calling embed_query
+        try:
+            vector = embeddings.embed_query(sample_text)
+        except TypeError:
+            # If the installed version of langchain-google-genai doesn't support output_dimensionality
+            # in the constructor, we can try passing it to embed_query directly or slice it.
+            print("Constructor output_dimensionality not supported, trying direct call parameter...")
+            vector = embeddings.embed_query(sample_text, output_dimensionality=768)
+            
         print("Success!")
         print(f"Vector type: {type(vector)}")
         print(f"Vector dimension: {len(vector)}")
