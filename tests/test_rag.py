@@ -29,5 +29,20 @@ def test_split_documents():
 def test_embeddings_generation():
     from src.ingest.uploader import get_embeddings_model
     embeddings = get_embeddings_model()
+    assert embeddings.model == "text-embedding-004"
     vector = embeddings.embed_query("Test embedding generation")
     assert len(vector) == 768
+
+@pytest.mark.skipif(
+    not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"),
+    reason="Gemini API key not configured in environment"
+)
+def test_dual_model_rag_routing():
+    from src.rag.chain import get_rag_chain
+    rag_pipeline = get_rag_chain()
+    
+    # Test conversational query routing (bypasses Pinecone)
+    response = rag_pipeline("Hello there! How are you?")
+    assert "answer" in response
+    assert response["source_documents"] == []
+

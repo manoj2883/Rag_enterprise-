@@ -14,9 +14,9 @@ def get_embeddings_model() -> GoogleGenerativeAIEmbeddings:
     if not gemini_key:
         raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY must be set in environment variables.")
     
-    # Using gemini-embedding-001 with output_dimensionality=768
+    # Using text-embedding-004 with output_dimensionality=768
     return GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-001",
+        model="text-embedding-004",
         task_type="retrieval_query",
         google_api_key=gemini_key,
         output_dimensionality=768
