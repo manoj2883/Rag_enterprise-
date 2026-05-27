@@ -1,6 +1,7 @@
 import os
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
@@ -54,6 +55,17 @@ class QueryResponse(BaseModel):
     source_documents: List[SourceDocumentResponse]
 
 # Endpoints
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def serve_frontend():
+    """
+    Serve the premium glassmorphic chat interface.
+    """
+    index_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    return HTMLResponse(content="<h1>Frontend Interface Not Found</h1>", status_code=404)
+
 @app.get("/health", tags=["Health"])
 async def health():
     """

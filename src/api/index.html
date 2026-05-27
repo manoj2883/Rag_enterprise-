@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Enterprise Chatbot</title>
+    <!-- Import Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at 50% 50%, #0d0b21 0%, #05040d 100%);
+            --accent-cyan: #00f2fe;
+            --accent-purple: #4facfe;
+            --accent-glow: rgba(0, 242, 254, 0.15);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --glass-blur: blur(20px);
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --system-green: #00e676;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Ambient Glow Blobs */
+        .glow-blob-1 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(79, 172, 254, 0.12) 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            left: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glow-blob-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 242, 254, 0.08) 0%, rgba(0,0,0,0) 70%);
+            bottom: -150px;
+            right: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Core Layout Frame */
+        .app-container {
+            width: 90vw;
+            max-width: 1200px;
+            height: 85vh;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            z-index: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+
+        /* Left Side: Main Chat Frame */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-right: 1px solid var(--card-border);
+            position: relative;
+        }
+
+        /* Top Header Panel */
+        .app-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .brand-logo::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            border-radius: 3px;
+        }
+
+        .brand-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 20px;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid var(--card-border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--system-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--system-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        /* Message Output Window */
+        .chat-history {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-history::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-history::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .message-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.system {
+            justify-content: flex-start;
+        }
+
+        .bubble {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            line-height: 1.6;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .message-row.user .bubble {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.15) 0%, rgba(0, 242, 254, 0.15) 100%);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-row.system .bubble {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Input Controls Panel */
+        .input-bar {
+            padding: 24px 30px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-glow);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .chat-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 16px 20px;
+            color: var(--text-primary);
+            font-size: 14.5px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 242, 254, 0.3);
+        }
+
+        .send-btn svg {
+            fill: #ffffff;
+            width: 20px;
+            height: 20px;
+            transform: rotate(-45deg) translate(2px, -2px);
+        }
+
+        /* Right Side: Grounded Truth Panel & Admin Panel */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Side Header Tabs */
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .tab-btn {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            padding: 18px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        /* Sliding content */
+        .sidebar-content-wrapper {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-panel {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .sidebar-panel.active {
+            display: flex;
+        }
+
+        /* Segment Styles */
+        .source-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .source-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .source-body {
+            line-height: 1.5;
+            color: var(--text-secondary);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .source-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .source-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+        }
+
+        /* Ingest Panel Form */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13.5px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        textarea.form-input {
+            height: 180px;
+            resize: none;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 242, 254, 0.25);
+        }
+
+        /* Typing indicator micro-animation */
+        .typing-indicator {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding: 6px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-blob-1"></div>
+    <div class="glow-blob-2"></div>
+
+    <div class="app-container">
+        <!-- Main Chat Section -->
+        <div class="chat-section">
+            <div class="app-header">
+                <div class="brand">
+                    <div class="brand-logo"></div>
+                    <div class="brand-title">
+                        <h1>Rag_enterprise-</h1>
+                        <p>Hybrid Dual-Model Chat</p>
+                    </div>
+                </div>
+                <div class="status-badge">
+                    <div class="status-dot"></div>
+                    <span>Active System</span>
+                </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="chat-history" id="chatHistory">
+                <div class="message-row system">
+                    <div class="bubble">
+                        Welcome to the RAG Enterprise Chatbot! Ask me anything, and I will generate accurate answers strictly grounded in your Pinecone vector documents using Gemini 2.5.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Input Area -->
+            <div class="input-bar">
+                <div class="input-wrapper">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Submit a question to the RAG backend..." autocomplete="off">
+                </div>
+                <button class="send-btn" id="sendBtn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar Panel -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchTab('sources')">Grounded Sources</button>
+                <button class="tab-btn" onclick="switchTab('ingest')">Add Documents</button>
+            </div>
+            
+            <div class="sidebar-content-wrapper">
+                <!-- Sources Panel -->
+                <div class="sidebar-panel active" id="sourcesPanel">
+                    <div style="font-size: 13px; color: var(--text-secondary); text-align: center; margin-top: 50px;" id="noSourcesPlaceholder">
+                        No sources loaded yet.<br>Ask a question to inspect retrieved context documents.
+                    </div>
+                    <div id="sourcesContainer" style="display: flex; flex-direction: column; gap: 15px; width: 100%;"></div>
+                </div>
+
+                <!-- Admin Ingestion Panel -->
+                <div class="sidebar-panel" id="ingestPanel">
+                    <div class="form-group">
+                        <label class="form-label">Document Text</label>
+                        <textarea class="form-input" id="docText" placeholder="Paste the text contents you want the chatbot to analyze..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Source Metadata</label>
+                        <input type="text" class="form-input" id="docSource" placeholder="e.g. employee_handbook_2026.pdf">
+                    </div>
+                    <button class="submit-btn" id="ingestBtn">Ingest Document</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatHistory = document.getElementById('chatHistory');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const sourcesContainer = document.getElementById('sourcesContainer');
+        const noSourcesPlaceholder = document.getElementById('noSourcesPlaceholder');
+
+        // Handles sidebar tab swapping
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.sidebar-panel').forEach(panel => panel.classList.remove('active'));
+            
+            if (tab === 'sources') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('sourcesPanel').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('ingestPanel').classList.add('active');
+            }
+        }
+
+        // Send a message
+        async function sendMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            // Clear input field
+            chatInput.value = '';
+
+            // Render user bubble
+            appendMessage(query, 'user');
+
+            // Render typing indicator
+            const typingRow = appendTypingIndicator();
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: query })
+                });
+
+                const data = await response.json();
+                typingRow.remove();
+
+                if (response.ok) {
+                    // Render chatbot grounded answer
+                    appendMessage(data.answer, 'system');
+                    
+                    // Render extracted source documents in Sidebar
+                    renderSources(data.source_documents);
+                } else {
+                    appendMessage(`Error: ${data.detail || 'Failed to generate answer.'}`, 'system');
+                }
+            } catch (err) {
+                typingRow.remove();
+                appendMessage(`Connection error: Unable to contact the API.`, 'system');
+            }
+
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function appendMessage(text, sender) {
+            const row = document.createElement('div');
+            row.className = `message-row ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            
+            row.appendChild(bubble);
+            chatHistory.appendChild(row);
+        }
+
+        function appendTypingIndicator() {
+            const row = document.createElement('div');
+            row.className = 'message-row system';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            
+            bubble.appendChild(indicator);
+            row.appendChild(bubble);
+            chatHistory.appendChild(row);
+            return row;
+        }
+
+        // Render sources inside the sidebar panel
+        function renderSources(sources) {
+            sourcesContainer.innerHTML = '';
+            
+            if (!sources || sources.length === 0) {
+                noSourcesPlaceholder.style.display = 'block';
+                return;
+            }
+
+            noSourcesPlaceholder.style.display = 'none';
+
+            sources.forEach((doc, idx) => {
+                const card = document.createElement('div');
+                card.className = 'source-card';
+                
+                const meta = document.createElement('div');
+                meta.className = 'source-meta';
+                const filename = doc.metadata.source || `document_source_${idx + 1}`;
+                meta.innerHTML = `<span>Source ${idx + 1}</span><span>${filename}</span>`;
+                
+                const body = document.createElement('div');
+                body.className = 'source-body';
+                body.textContent = doc.page_content;
+                
+                card.appendChild(meta);
+                card.appendChild(body);
+                sourcesContainer.appendChild(card);
+            });
+        }
+
+        // Document ingestion click event
+        document.getElementById('ingestBtn').addEventListener('click', async () => {
+            const text = document.getElementById('docText').value.trim();
+            const source = document.getElementById('docSource').value.trim();
+            const ingestBtn = document.getElementById('ingestBtn');
+
+            if (!text) {
+                alert('Please enter document text to ingest.');
+                return;
+            }
+
+            ingestBtn.disabled = true;
+            ingestBtn.textContent = 'Processing & Embedding...';
+
+            try {
+                const response = await fetch('/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        documents: [{
+                            text: text,
+                            metadata: { source: source || 'direct_paste' }
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Success! Document chunked into ${data.chunks_created} vectors and uploaded to Pinecone.`);
+                    document.getElementById('docText').value = '';
+                    document.getElementById('docSource').value = '';
+                    switchTab('sources');
+                } else {
+                    alert(`Ingestion failed: ${data.detail}`);
+                }
+            } catch (err) {
+                alert('Connection error: Failed to reach ingestion API.');
+            } finally {
+                ingestBtn.disabled = false;
+                ingestBtn.textContent = 'Ingest Document';
+            }
+        });
+
+        // Trigger message sends
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
