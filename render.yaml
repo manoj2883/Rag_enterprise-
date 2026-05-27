@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: rag-enterprise-chatbot
+    name: health-ai-rag
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt

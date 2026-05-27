@@ -14,8 +14,8 @@ from src.rag.chain import get_rag_chain
 load_dotenv()
 
 app = FastAPI(
-    title="RAG Enterprise Chatbot API",
-    description="A free-tier FastAPI backend for RAG using Gemini 2.0 and Pinecone.",
+    title="Health AI - RAG API",
+    description="A free-tier FastAPI backend for Health AI using Gemini 2.5 Dual-Model RAG and Pinecone.",
     version="1.0.0"
 )
 

@@ -18,6 +18,7 @@ def get_router_llm() -> ChatGoogleGenerativeAI:
     gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not gemini_key:
         raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY must be set in environment variables.")
+    gemini_key = gemini_key.strip()
         
     return ChatGoogleGenerativeAI(
         model="gemini-2.5-flash-lite",
@@ -32,6 +33,7 @@ def get_generation_llm() -> ChatGoogleGenerativeAI:
     gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not gemini_key:
         raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY must be set in environment variables.")
+    gemini_key = gemini_key.strip()
         
     return ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
